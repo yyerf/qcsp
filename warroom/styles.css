@@ -406,6 +406,12 @@ h2 {
   border-left: 4px solid var(--cyan);
 }
 
+.candidate-card strong,
+.decode-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
 .next-card {
   border-left: 4px solid var(--amber);
 }
@@ -414,6 +420,12 @@ h2 {
 .decode-card code,
 .solver-line code {
   color: #f6e8bf;
+}
+
+.candidate-card code {
+  display: block;
+  margin-top: 6px;
+  white-space: pre-wrap;
 }
 
 .decode-card div,

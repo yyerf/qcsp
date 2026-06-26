@@ -2404,6 +2404,27 @@ async function artifactSha256(buffer) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function artifactLoadScript(src, globalName) {
+  return new Promise((resolve, reject) => {
+    if (globalName && window[globalName]) {
+      resolve(window[globalName]);
+      return;
+    }
+    const existing = [...document.scripts].find((script) => script.src === src);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(globalName ? window[globalName] : true), { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve(globalName ? window[globalName] : true);
+    script.onerror = () => reject(new Error(`failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
 function artifactImageDimensions(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -2607,6 +2628,10 @@ function artifactExtractExif() {
     return;
   }
   artifactState.exif = artifactParseExif(artifactState.arrayBuffer);
+  if (artifactState.exif && artifactState.exif.note && artifactState.info) {
+    artifactState.exif.File = artifactState.info.name;
+    artifactState.exif.Status = "No embedded EXIF GPS/date/device fields were found in this file. If GPS text is visible in the image, run OCR or paste the visible text into OSINT Manual Context.";
+  }
   artifactRender();
 }
 
@@ -2615,18 +2640,33 @@ async function artifactScanQr() {
     toast("Load an image first");
     return;
   }
-  if (!("BarcodeDetector" in window)) {
-    artifactState.qrText = "BarcodeDetector is not available in this browser. Use a local QR scanner manually and paste decoded text into the solver.";
-    artifactRender();
-    return;
-  }
+  artifactState.qrText = "QR/barcode scan running locally...";
+  artifactRender();
   try {
-    const detector = new BarcodeDetector({ formats: ["qr_code", "aztec", "data_matrix", "code_128", "ean_13"] });
-    const bitmap = await createImageBitmap(artifactState.file);
-    const codes = await detector.detect(bitmap);
-    artifactState.qrText = codes.length ? codes.map((code) => code.rawValue).join("\n") : "No QR/barcode detected.";
+    if ("BarcodeDetector" in window) {
+      const detector = new BarcodeDetector({ formats: ["qr_code", "aztec", "data_matrix", "code_128", "ean_13"] });
+      const bitmap = await createImageBitmap(artifactState.file);
+      const codes = await detector.detect(bitmap);
+      if (codes.length) {
+        artifactState.qrText = codes.map((code) => code.rawValue).join("\n");
+        artifactRender();
+        return;
+      }
+    }
+    if (!window.jsQR) {
+      await artifactLoadScript("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js", "jsQR");
+    }
+    const img = $("artifactPreview");
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
+    artifactState.qrText = code && code.data ? code.data : "No QR/barcode detected. If the code is small, crop it manually or use a local QR scanner and paste decoded text.";
   } catch (error) {
-    artifactState.qrText = `QR/barcode scan failed locally: ${error.message || error}`;
+    artifactState.qrText = `QR/barcode scan failed locally: ${error.message || error}. BarcodeDetector is unavailable in some browsers; jsQR fallback needs network access once to load the local decoder library.`;
   }
   artifactRender();
 }
@@ -2637,14 +2677,20 @@ async function artifactRunOcr() {
     return;
   }
   if (!window.Tesseract || !window.Tesseract.recognize) {
-    artifactState.ocrText = "No local OCR engine is loaded. Run OCR manually or preload Tesseract.js locally, then paste extracted text into the solver. Files are not uploaded by this tool.";
+    artifactState.ocrText = "Loading OCR engine on user request. The image is not uploaded by this tool.";
     artifactRender();
-    return;
+    try {
+      await artifactLoadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js", "Tesseract");
+    } catch (error) {
+      artifactState.ocrText = `No local OCR engine is loaded and Tesseract.js could not be fetched: ${error.message || error}. Run OCR manually or preload Tesseract.js locally, then paste extracted text into the solver. Files are not uploaded by this tool.`;
+      artifactRender();
+      return;
+    }
   }
   artifactState.ocrText = "OCR running locally...";
   artifactRender();
   try {
-    const result = await window.Tesseract.recognize(artifactState.file, "eng");
+    const result = await window.Tesseract.recognize(artifactState.file, "eng+rus");
     artifactState.ocrText = result && result.data ? result.data.text.trim() : "";
   } catch (error) {
     artifactState.ocrText = `OCR failed locally: ${error.message || error}`;
