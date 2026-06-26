@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.DS_Store
+.env
+.env.*
+.vercel/
+.vscode/
+.idea/
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local challenge scratch/output files.
+test.py
+web-scan.md
+crawl.md
+triage.md
+image-triage.md
+
+# Local reference/source checkout. The public dashboard links to Quirk online.
+Quirk/
+
+# Unused local event media.
+CTF-1-page.png
+togi2-1024x605.jpg

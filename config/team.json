@@ -1,0 +1,33 @@
+{
+  "event": "QCSP/ISC2 Quantum + Cybersecurity Hackathon 2026 - Mindanao Leg",
+  "flag_format": "isc2_qcsp{<flag>}",
+  "duration_minutes": 180,
+  "event_start_local": "2026-06-27T13:30:00+08:00",
+  "members": [
+    {
+      "name": "Captain",
+      "role": "Submitter / scoreboard / tie-break decisions",
+      "preferred_categories": ["Prompt Vault", "Cryptography"]
+    },
+    {
+      "name": "OSINT Lead",
+      "role": "Search, attribution, source validation",
+      "preferred_categories": ["OSINT"]
+    },
+    {
+      "name": "DFIR Lead",
+      "role": "Artifacts, PCAPs, logs, disk/image triage",
+      "preferred_categories": ["DFIR"]
+    },
+    {
+      "name": "Crypto Lead",
+      "role": "Classical crypto, encodings, RSA, XOR, hashes",
+      "preferred_categories": ["Cryptography"]
+    },
+    {
+      "name": "Quantum Lead",
+      "role": "Quirk circuits, basis changes, measurements",
+      "preferred_categories": ["Classical-Quantum"]
+    }
+  ]
+}

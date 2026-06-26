@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+.git/
+.github/
+.vscode/
+.idea/
+.vercel/
+node_modules/
+Quirk/
+test.py
+CTF-1-page.png
+togi2-1024x605.jpg
+warroom/solver-tests.js

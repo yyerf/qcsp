@@ -1,0 +1,98 @@
+{
+  "event": [
+    {
+      "name": "Hackathon Handbook PDF",
+      "url": "../Hackathon Handbook _ Quantum + Cybersecurity 2026.pdf",
+      "notes": "Local source of rules, schedule, categories, and flag format."
+    },
+    {
+      "name": "Program Flow",
+      "url": "https://canva.link/qcc-hackathon-2026-program",
+      "notes": "Detailed event program from the handbook."
+    },
+    {
+      "name": "Discord Server",
+      "url": "https://discord.gg/DE6sd3NjV8",
+      "notes": "Official communications and lecture resources."
+    },
+    {
+      "name": "Lecture Participant Registration",
+      "url": "https://tally.so/r/zxWq6E",
+      "notes": "Registration form for lecture-series participants."
+    },
+    {
+      "name": "Public Registration",
+      "url": "https://tally.so/r/44AGOA",
+      "notes": "Registration form for non-lecture-series participants."
+    },
+    {
+      "name": "Mindanao Venue Map",
+      "url": "https://maps.app.goo.gl/oNbopVu6NuTcC2fq5",
+      "notes": "Ateneo de Davao University map link from the handbook."
+    }
+  ],
+  "competition": [
+    {
+      "name": "CTFd Platform",
+      "url": "",
+      "notes": "Add the live CTFd URL after the official briefing."
+    },
+    {
+      "name": "Quirk",
+      "url": "https://algassert.com/quirk",
+      "notes": "Quantum circuit simulator explicitly mentioned in the handbook."
+    },
+    {
+      "name": "Quirk Manual",
+      "url": "https://github.com/Strilanc/Quirk/wiki/How-to-use-Quirk",
+      "notes": "Gate, display, URL, and circuit editing reference."
+    },
+    {
+      "name": "QC.C Lecture Playlist",
+      "url": "https://youtube.com/playlist?list=PLFbtbEz74U4FTXzbPCUxmEg7Xpl-HPX5l",
+      "notes": "Organizer-recommended lecture series playlist."
+    }
+  ],
+  "practice": [
+    {
+      "name": "Hacker101 CTF",
+      "url": "https://ctf.hacker101.com/",
+      "notes": "General beginner-friendly web and CTF practice."
+    },
+    {
+      "name": "picoCTF / CyLab Security Academy",
+      "url": "https://picoctf.org/",
+      "notes": "Beginner-to-intermediate cybersecurity practice."
+    },
+    {
+      "name": "TryHackMe Simple CTF",
+      "url": "https://tryhackme.com/room/easyctf",
+      "notes": "Beginner boot-to-root room referenced by the handbook."
+    },
+    {
+      "name": "Hack The Box CTF",
+      "url": "https://ctf.hackthebox.com/",
+      "notes": "Jeopardy and event-style CTF practice."
+    },
+    {
+      "name": "CyberDefenders Blue Team Labs",
+      "url": "https://cyberdefenders.org/blueteam-ctf-challenges/",
+      "notes": "DFIR, network forensics, endpoint forensics, and threat intel."
+    },
+    {
+      "name": "Hackviser",
+      "url": "https://hackviser.com/",
+      "notes": "Training, labs, scenarios, and warmups."
+    },
+    {
+      "name": "CTF Sites",
+      "url": "https://ctfsites.github.io/",
+      "notes": "Large collection of permanent practice CTFs."
+    }
+  ],
+  "ctfd": {
+    "base_url": "",
+    "token_env": "QCSP_CTFD_TOKEN",
+    "read_only": true
+  }
+}
