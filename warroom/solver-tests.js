@@ -314,8 +314,12 @@ OSINT safety: do not identify a person from face alone.
 `);
   assert(report.recommended);
   assert.strictEqual(report.recommended.title, "OSINT image triage");
-  assert(report.recommended.evidence.includes("Image/person challenge detected"));
+  assert(report.recommended.evidence.includes("Image artifact detected"));
   assert(!report.recommended.title.includes("filename:"));
+  const copied = solverReportTextFromReport(report);
+  assert(copied.includes("Recommended Lead: Image artifact triage (osint_artifact_test_cyrillic_qr.png; 640x480; Cyrillic text)"));
+  assert(!copied.includes('Recommended: inspect "Artifact Type:'));
+  assert(!report.next[0].includes("Recommended Workflow:"));
 });
 
 test("OSINT filenames and libraries are not domains", () => {
@@ -359,6 +363,33 @@ Use Cyrillic in the answer box.
   const noisy = report.findings.filter((item) => /caesar-|ROT13|ROT47/.test(item.kind));
   assert(noisy.length < 100);
   assert(!report.decoded.some((item) => /caesar-|ROT13|ROT47/.test(item.kind) && !item.value.includes("isc2_qcsp{")));
+});
+
+test("OSINT artifact unavailable tools do not look decoded", () => {
+  const report = solverAnalyze(`
+OSINT Artifact Context
+Image Artifact:
+filename: osint_exif_gps_test.jpg
+MIME: image/jpeg
+size: 62.92 KB
+dimensions: 1000x650
+hash: unavailable
+QR decoded:
+No QR/barcode detected.
+EXIF metadata:
+note: No EXIF APP1 segment found.
+OSINT safety: do not identify a person from face alone.
+`);
+  const text = evidence(report);
+  assert(report.recommended);
+  assert.strictEqual(report.recommended.title, "OSINT image triage");
+  assert.strictEqual(report.recommended.details.type, "Image artifact triage");
+  assert(text.includes("Recommended Lead: Image artifact triage (osint_exif_gps_test.jpg; 1000x650)"));
+  assert(text.includes("EXIF: none found"));
+  assert(text.includes("QR/barcode: none detected"));
+  assert(!text.includes("EXIF: parsed/provided"));
+  assert(!text.includes("QR/barcode: decoded/provided"));
+  assert(!text.includes('Recommended: inspect "Artifact Type:'));
 });
 
 test("OSINT URL image challenge", () => {

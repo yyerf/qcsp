@@ -1512,6 +1512,48 @@ function solverOsintHandles(text) {
   return handles;
 }
 
+function solverNamedSection(text, label, nextLabels = []) {
+  const source = String(text || "");
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`${escaped}\\s*:\\s*`, "i").exec(source);
+  if (!match) return "";
+  const start = match.index + match[0].length;
+  const nextIndexes = nextLabels
+    .map((next) => {
+      const nextEscaped = next.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const nextMatch = new RegExp(`\\n${nextEscaped}\\s*:`, "i").exec(source.slice(start));
+      return nextMatch ? start + nextMatch.index : -1;
+    })
+    .filter((idx) => idx >= start);
+  const end = nextIndexes.length ? Math.min(...nextIndexes) : source.length;
+  return source.slice(start, end).trim();
+}
+
+function solverOsintToolStatus(text) {
+  const ocrBlock = solverNamedSection(text, "OCR text", ["QR decoded", "EXIF metadata", "OSINT safety"]);
+  const qrBlock = solverNamedSection(text, "QR decoded", ["EXIF metadata", "OSINT safety"]);
+  const exifBlock = solverNamedSection(text, "EXIF metadata", ["OSINT safety"]);
+  const status = { ocr: "", exif: "", qr: "" };
+
+  if (ocrBlock) {
+    status.ocr = /No local OCR|Run OCR manually|OCR failed|OCR running/i.test(ocrBlock) ? "manual required" : "text provided";
+  }
+
+  if (exifBlock) {
+    status.exif = /No JPEG EXIF|No EXIF|No metadata|No EXIF fields parsed/i.test(exifBlock) ? "none found" : "parsed/provided";
+  }
+
+  if (qrBlock) {
+    status.qr = /No QR\/barcode detected|No barcode detected/i.test(qrBlock)
+      ? "none detected"
+      : /BarcodeDetector is not available|scan failed|manual/i.test(qrBlock)
+        ? "manual required"
+        : "decoded/provided";
+  }
+
+  return status;
+}
+
 function solverOsintClues(text) {
   const urls = solverOsintUrls(text);
   const domains = solverOsintDomains(urls, text);
@@ -1539,16 +1581,13 @@ function solverOsintClues(text) {
   if (/[\u3400-\u9fff]/.test(text)) scripts.push("Chinese");
   if (/[\uac00-\ud7af]/.test(text)) scripts.push("Korean");
   if (/[\u0600-\u06ff]/.test(text)) scripts.push("Arabic");
-  const toolStatus = {
-    ocr: /OCR text:\s*\n\s*(?!No local OCR|$)/i.test(text) ? "text provided" : /No local OCR|Run OCR manually/i.test(text) ? "manual required" : "",
-    exif: /EXIF metadata:/i.test(text) ? "parsed/provided" : "",
-    qr: /QR decoded:/i.test(text) ? "decoded/provided" : ""
-  };
+  const toolStatus = solverOsintToolStatus(text);
   return { urls, domains, paths, filenames, handles, emails, dimensions, coordinates: solverUnique(coordinates), gpsLat, gpsLon, altText, titleText, date, venue, mime, size, sha256, maps, platforms, scripts, toolStatus };
 }
 
 function solverOsintType(text, clues) {
-  if (/who is this|find this person|picture found|identify this/i.test(text) || clues.filenames.some((name) => /\.(?:png|jpe?g|webp|gif|heic|tiff?|bmp)$/i.test(name))) return "Image/person identification challenge";
+  if (/who is this|find this person|picture found|identify this/i.test(text)) return "Image/person identification challenge";
+  if (clues.filenames.some((name) => /\.(?:png|jpe?g|webp|gif|heic|tiff?|bmp)$/i.test(name)) || /^image\//i.test(clues.mime || "")) return "Image artifact triage";
   if (clues.maps.length || clues.coordinates.length || /where is this|venue|location|map|geolocation/i.test(text)) return "Location/map challenge";
   if (clues.handles.length || /username|profile|social|organizer/i.test(text)) return "Social handle challenge";
   if (clues.urls.length || clues.domains.length) return "URL/domain OSINT challenge";
@@ -1650,11 +1689,20 @@ function solverOsintStructuredLines(item) {
   });
   lines.push("* Extracted clues:");
   [
-    ["URLs", (clues.urls || []).join(", ")],
-    ["domains", (clues.domains || []).join(", ")],
-    ["map links", (clues.maps || []).join(", ")],
+    ["URL", (clues.urls || []).join(", ")],
+    ["domain", (clues.domains || []).join(", ")],
+    ["path/query", (clues.paths || []).join(", ")],
+    ["handle", (clues.handles || []).join(", ")],
+    ["email", (clues.emails || []).join(", ")],
+    ["map link", (clues.maps || []).join(", ")],
+    ["platform link", (clues.platforms || []).join(", ")],
     ["coordinates", (clues.coordinates || []).join(", ")],
     ["GPS", clues.gpsLat && clues.gpsLon ? `${clues.gpsLat}, ${clues.gpsLon}` : ""],
+    ["dimensions", (clues.dimensions || []).join(", ")],
+    ["alt text", (clues.altText || []).join(", ")],
+    ["title text", (clues.titleText || []).join(", ")],
+    ["date", clues.date],
+    ["venue/location", clues.venue],
     ["non-Latin script", (clues.scripts || []).join(", ")]
   ].forEach(([label, value]) => {
     if (value) lines.push(`  - ${label}: ${value}`);
@@ -1667,6 +1715,11 @@ function solverOsintStructuredLines(item) {
   solverOsintWorkflow(item.details.type || "").forEach((step) => lines.push(`  ${step}`));
   if ((clues.scripts || []).length) lines.push("  Preserve exact script/spelling if the answer requires it.");
   if ((clues.coordinates || []).length || (clues.gpsLat && clues.gpsLon)) lines.push("  GPS/coordinates detected: verify manually in a map and record public evidence.");
+  lines.push("* Safety:");
+  lines.push("  - Do not guess identity from face alone.");
+  lines.push("  - Do not attack infrastructure.");
+  lines.push("  - Do not automate scraping or login-based access.");
+  lines.push("  - Keep final submission manual.");
   return lines;
 }
 
@@ -1686,12 +1739,15 @@ function solverOsintFindings(text) {
   const kind = solverOsintKind(type, clues);
   const confidence = clues.urls.length || clues.filenames.length || clues.handles.length || clues.maps.length || clues.venue ? "medium" : "low";
   const score = confidence === "medium" ? 58 : 38;
+  const evidence = kind === "image-triage"
+    ? `${/person/i.test(type) ? "Image/person challenge" : "Image artifact"} detected. Extracted artifact clues and safe workflow. No identity guessed.`
+    : `OSINT trigger detected. Type: ${type}. No identity guessed and no automation performed.`;
   return [solverMakeFinding({
     category: "osint",
     kind,
     title: kind === "image-triage" ? "OSINT image triage" : kind === "location-clue" ? "OSINT location triage" : kind === "social-handle" ? "OSINT social handle triage" : "OSINT URL/domain triage",
     value: solverOsintValue(type, clues),
-    evidence: `${kind === "image-triage" ? "Image/person challenge detected. Extracted artifact clues and safe workflow. No identity guessed." : `OSINT trigger detected. Type: ${type}. No identity guessed and no automation performed.`}`,
+    evidence,
     source: "pasted challenge text",
     score,
     confidence,
@@ -1765,10 +1821,41 @@ function solverVisibleDecodedFindings(findings) {
   });
 }
 
+function solverOsintLeadSummary(item) {
+  const details = item.details || {};
+  const clues = details.clues || {};
+  const artifact = details.artifact || {};
+  const parts = [];
+  const filename = artifact.filename || (clues.filenames || [])[0];
+  const dimensions = artifact.dimensions || (clues.dimensions || [])[0];
+  const coordinates = (clues.coordinates || [])[0] || (clues.gpsLat && clues.gpsLon ? `${clues.gpsLat}, ${clues.gpsLon}` : "");
+  const map = (clues.maps || [])[0];
+  const domain = (clues.domains || [])[0];
+  const handle = (clues.handles || [])[0];
+  const script = (clues.scripts || [])[0];
+  if (filename) parts.push(filename);
+  if (dimensions) parts.push(dimensions);
+  if (coordinates) parts.push(`GPS ${coordinates}`);
+  if (map) parts.push(map);
+  if (domain) parts.push(domain);
+  if (handle) parts.push(`@${handle}`);
+  if (script) parts.push(`${script} text`);
+  return `${details.type || item.title}${parts.length ? ` (${parts.slice(0, 3).join("; ")})` : ""}`;
+}
+
+function solverFindingLeadSummary(item) {
+  if (!item) return "none";
+  if (item.category === "flag") return item.value;
+  if (item.category === "osint") return solverOsintLeadSummary(item);
+  if (item.kind === "xor-parity-construction") return item.title;
+  if (item.category === "qasm" || item.category === "quantum") return `${item.title}: ${item.value}`;
+  return solverPreview(item.value || item.title, 180);
+}
+
 function solverNextMovesStructured(text, report) {
   const moves = [];
   const lower = text.toLowerCase();
-  if (report.recommended) moves.push(`Recommended: inspect "${report.recommended.value}" because ${report.recommended.evidence}`);
+  if (report.recommended) moves.push(`Recommended: inspect ${solverFindingLeadSummary(report.recommended)} because ${report.recommended.evidence}`);
   if (report.flags.length) moves.push("Validate exact flag casing/braces, then submit manually only if the evidence trail supports it.");
   if (report.quantum.length) moves.push("Quantum: verify whether the prompt wants raw bitstring, formatted flag, constant/balanced classification, or marked state.");
   if (report.qasm.length) moves.push("QASM: check bit ordering before finalizing count strings; Qiskit-style output may reverse classical bit display.");
@@ -1931,7 +2018,7 @@ function solverRenderRecommended(finding) {
   const title = document.createElement("strong");
   title.textContent = finding.title;
   const value = document.createElement("code");
-  value.textContent = finding.value;
+  value.textContent = solverFindingLeadSummary(finding);
   const reason = document.createElement("div");
   reason.className = "solver-evidence";
   reason.textContent = finding.evidence;
@@ -2006,10 +2093,7 @@ function solverQasmReportLines(item) {
 }
 
 function solverRecommendedLabel(item) {
-  if (!item) return "none";
-  if (item.category === "flag") return item.value;
-  if (item.kind === "xor-parity-construction") return item.title;
-  return item.value || item.title;
+  return solverFindingLeadSummary(item);
 }
 
 function solverReportTextFromReport(report, section = "") {
